@@ -1,48 +1,81 @@
-**SALÃO DE BELEZA FEMININO**
+# ⚜️ Lumiére - Sistema de Gestão Interna para Salão de Beleza
 
+O **Lumiére** é uma plataforma web elegante e de alta performance desenvolvida para centralizar a gestão de salões de beleza e clínicas de estética. O sistema combina uma identidade visual *premium* com regras de negócio sólidas, permitindo o controle de agendamentos, fluxo de caixa diário, além do gerenciamento completo de clientes e serviços ofertados.
 
-- **ETAPA 1**
+---
 
-     - Briefing: O sistema será um Gerenciador de Atendimentos e Serviços. Servirá para a dona do salão (ou  recepcionista) cadastrar e controlar os horários das clientes e os funcionários do salão.
+## 🚀 Funcionalidades Principais
 
-- **ETAPA 2**
+| Módulo | Descrição | Recursos Inclusos |
+| :--- | :--- | :--- |
+| **🔐 Autenticação** | Controle de acesso seguro | Criptografia de senhas com `password_hash`, validação de sessão ativa e proteção de páginas restritas. |
+| **📊 Dashboard** | Painel analítico em tempo real | Indicadores de faturamento diário, taxa de ocupação do salão, listagem cronológica de horários e avatares dinâmicos. |
+| **📅 Agendamentos** | Controle de horários e profissionais | Sistema para agendar e desmarcar procedimentos de forma limpa, evitando choque de horários. |
+| **✂️ Serviços** | Catálogo de procedimentos | Cadastro simplificado de serviços com tratamento automático de valores monetários e tempos estimados. |
+| **👥 Clientes** | Portfólio e banco de contatos | Cadastro de clientes com histórico básico, centralização de contatos (Telefone/E-mail) e iniciais automatizadas. |
 
-     - Páginas:
+---
 
-        -- **cadastrar.php**: O formulário para agendar um novo serviço para uma cliente.
+## 🛠️ Tecnologias e Ferramentas
 
-        -- **conexao.php**: (Conexão com o banco) Faz a ponte entre o PHP e o banco de dados MySQL.
+O ecossistema do projeto foi construído utilizando tecnologias modernas e eficientes, separadas conforme a tabela abaixo:
 
-        -- **editar.php**: (Edição) Abre o formulário preenchido com os dados daquela cliente para mudar o horário ou o serviço.
+| Camada | Tecnologia | Utilização no Projeto |
+| :--- | :--- | :--- |
+| **Backend** | PHP 8.x | Processamento lógico, manipulação de sessões (`session_start`) e segurança de dados. |
+| **Banco de Dados**| PostgreSQL | Persistência de dados altamente confiável, queries otimizadas e relacionamentos robustos. |
+| **Drivers** | PDO (PHP Data Objects) | Camada de abstração de banco de dados para prevenção estrita de *SQL Injection*. |
+| **Frontend** | Bootstrap 5.3 | Estrutura responsiva (Grid System) e componentes utilitários modernos. |
+| **Estilização** | CSS3 Customizado | Paleta de cores institucional (*Dourado Lumiére*, tons neutros e tipografia Playfair Display). |
+| **Ícones** | Bootstrap Icons | Identificação visual de botões, abas da barra lateral e ações do sistema. |
 
-        -- **excluir.php**: Deleta o agendamento do banco de dados (quando a cliente cancela) e volta para a página inicial.
+---
 
-        -- **index.php**: (Listagem) A tela principal. Mostra uma tabela com todos os agendamentos do salão, com botões rápidos para editar ou desmarcar (excluir).
+## 🗄️ Arquitetura do Banco de Dados
 
-- **ETAPA 3 e 5**
+Abaixo está o mapeamento das tabelas estruturadas dentro do banco de dados **PostgreSQL**:
 
-     - Estrutura do Banco de Dados: Tabela chamada "agendamentos". Ela vai guardar tudo o que o salão precisa saber sobre o atendimento.
+### 1. Tabela: `usuarios`
+> Armazena as credenciais dos administradores e colaboradores autorizados a acessar o painel.
+| Campo | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id` | SERIAL | PRIMARY KEY | Identificador único do usuário. |
+| `nome` | VARCHAR(100) | UNIQUE, NOT NULL | Nome de login do usuário. |
+| `senha` | VARCHAR(255) | NOT NULL | Hash de segurança gerada com `PASSWORD_DEFAULT`. |
 
-CREATE DATABASE salao_beleza_db;
-USE salao_beleza_db;
+### 2. Tabela: `clientes`
+> Guarda o portfólio de clientes atendidas pelo salão.
+| Campo | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id` | SERIAL | PRIMARY KEY | Identificador único da cliente. |
+| `nome` | VARCHAR(150) | NOT NULL | Nome completo da cliente. |
+| `telefone` | VARCHAR(20) | NOT NULL | Número de telefone para contato/confirmação. |
+| `email` | VARCHAR(150) | NULL | Endereço eletrônico (opcional). |
 
-CREATE TABLE agendamentos (
-   id INT AUTO_INCREMENT PRIMARY KEY,
-   nome_cliente VARCHAR(100) NOT NULL,
-   telefone VARCHAR(20) NOT NULL,
-   servico VARCHAR(50) NOT NULL, \\ Ex: Progressiva, Manicure, Mechas
-   profissional VARCHAR(50) NOT NULL, \\ Ex: Gabi Cabeleireira, Ana Nails
-   data_hora DATETIME NOT NULL \\ Guarda a data e o horário juntos
-);
+### 3. Tabela: `servicos`
+> Catálogo de procedimentos disponíveis para agendamento.
+| Campo | Tipo | Restrições | Descrição |
+| :--- | :--- | :--- | :--- |
+| `id` | SERIAL | PRIMARY KEY | Identificador único do serviço. |
+| `nome` | VARCHAR(100) | NOT NULL | Nome do procedimento (ex: Mechas, Corte). |
+| `preco` | NUMERIC(10,2) | NOT NULL | Valor do procedimento (salvo no formato americano). |
+| `duracao` | INT | NOT NULL | Tempo estimado em minutos (ex: 60, 120). |
 
-\\ Dados de teste para você validar a listagem na Etapa 5
-INSERT INTO agendamentos (nome_cliente, telefone, servico, profissional, data_hora) VALUES
-('Mariana Souza', '(11) 99999-1111', 'Corte e Escova', 'Gabi Cabeleireira', '2026-06-10 14:00:00'),
-('Beatriz Lima', '(11) 98888-2222', 'Unha', 'Ana Nails', '2026-06-10 15:30:00'),
-('Juliana Ribeiro', '(11) 97777-3333', 'Design de Sobrancelha', 'Carla Esteticista', '2026-06-11 10:00:00');
+---
 
-- **ETAPA 4 e 6**
+## 📂 Estrutura de Arquivos do Projeto
 
-    -- **Serviço**: Em vez de um campo de texto aberto, é usado o <select> (caixa de seleção) com os serviços mais comuns do salão (ex: Corte/Escova, Tintura, Manicure/Pedicure, Depilação). Isso evita que o usuário digite errado.
+O projeto foi organizado de forma modular para facilitar manutenções futuras e garantir que formulários e visualizações rodem sem conflitos:
 
-    -- **Data/Hora**: É usado <input type="datetime-local">. Pois abre um calendário com relógio integrado nativo do navegador, que grava no formato certinho que o MySQL precisa (AAAA-MM-DD HH:MM:SS). 
+```text
+📁 lumiere-gestao/
+│
+├── 📄 conexao.php             # Arquivo central de conexão PDO com o PostgreSQL
+├── 📄 login.php               # Tela de autenticação dos usuários
+├── 📄 cadastrar_usuario.php   # Tela de criação de novas contas administrativas
+├── 📄 index.php               # Dashboard principal com métricas e tabela do dia
+├── 📄 cadastrar.php           # Tela para marcar novos agendamentos
+├── 📄 servicos.php            # Gestão unificada (cadastro/listagem) de procedimentos
+├── 📄 clientes.php            # Gestão unificada (cadastro/listagem) de clientes
+├── 📄 excluir.php             # Script lógico para remover agendamentos (via ID)
+└── 📄 logout.php              # Finaliza a sessão do usuário com segurança
