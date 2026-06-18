@@ -16,23 +16,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cadastrar_cliente'])) 
     $nome = trim($_POST['nome']);
     $telefone = trim($_POST['telefone']);
     $email = trim($_POST['email']);
+    $telefone_digits = preg_replace('/\D/', '', $telefone);
+    $nome_valido = preg_match('/^[a-záàâãéèêíïóôõöúçñA-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]+$/', $nome) && !empty(trim($nome));
 
-    if (!empty($nome) && !empty($telefone)) {
-        try {
-            // Insere no banco de dados (deixa o email como nulo se não for digitado)
-            $sql = "INSERT INTO clientes (nome, telefone, email) VALUES (:nome, :telefone, :email)";
-            $stmt = $conexao->prepare($sql);
-            $stmt->execute([
-                ':nome'     => $nome, 
-                ':telefone' => $telefone, 
-                ':email'    => !empty($email) ? $email : null
-            ]);
-            $mensagem = "<div class='alert alert-success p-2 small text-center'>Cliente cadastrada com sucesso!</div>";
-        } catch (PDOException $e) {
-            $mensagem = "<div class='alert alert-danger p-2 small text-center'>Erro ao cadastrar: " . $e->getMessage() . "</div>";
-        }
+    if (empty($nome) || empty($telefone)) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark p-2 small text-center'>Nome e Telefone são obrigatórios.</div>";
+    } elseif (!$nome_valido) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark p-2 small text-center'>O nome deve conter apenas letras e espaços.</div>";
+    } elseif (strlen($telefone_digits) < 10 || strlen($telefone_digits) > 11) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark p-2 small text-center'>O telefone deve conter 10 ou 11 dígitos.</div>";
     } else {
-        $mensagem = "<div class='alert alert-warning p-2 small text-center'>Nome e Telefone são obrigatórios.</div>";
+        // Verificar duplicatas de telefone
+        try {
+            $stmt_check = $conexao->prepare("SELECT COUNT(*) as count FROM clientes WHERE telefone = :telefone");
+            $stmt_check->execute([':telefone' => $telefone]);
+            $result = $stmt_check->fetch(PDO::FETCH_ASSOC);
+            if ($result['count'] > 0) {
+                $mensagem = "<div class='alert alert-light border border-secondary text-dark p-2 small text-center'>Já existe um cliente cadastrado com este telefone.</div>";
+            } else {
+                // Verificar duplicata de email se fornecido
+                if (!empty($email)) {
+                    $stmt_check_email = $conexao->prepare("SELECT COUNT(*) as count FROM clientes WHERE email = :email");
+                    $stmt_check_email->execute([':email' => $email]);
+                    $result_email = $stmt_check_email->fetch(PDO::FETCH_ASSOC);
+                    if ($result_email['count'] > 0) {
+                        $mensagem = "<div class='alert alert-light border border-secondary text-dark p-2 small text-center'>Já existe um cliente cadastrado com este email.</div>";
+                    }
+                }
+                // Se passou pelas validações, insere
+                if (empty($mensagem)) {
+                    try {
+                        $sql = "INSERT INTO clientes (nome, telefone, email) VALUES (:nome, :telefone, :email)";
+                        $stmt = $conexao->prepare($sql);
+                        $stmt->execute([
+                            ':nome' => $nome,
+                            ':telefone' => $telefone,
+                            ':email' => !empty($email) ? $email : null
+                        ]);
+                        $mensagem = "<div class='alert alert-success p-2 small text-center'>Cliente cadastrada com sucesso!</div>";
+                    } catch (PDOException $e) {
+                        $mensagem = "<div class='alert alert-danger p-2 small text-center'>Erro ao cadastrar: " . $e->getMessage() . "</div>";
+                    }
+                }
+            }
+        } catch (PDOException $e) {
+            $mensagem = "<div class='alert alert-danger p-2 small text-center'>Erro ao verificar dados: " . $e->getMessage() . "</div>";
+        }
     }
 }
 
@@ -65,7 +94,7 @@ function obterIniciaisClientes($nome) {
     <title>Clientes - Lumiére</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght=400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { 
             --primary: #D4AF37; 
@@ -133,7 +162,7 @@ function obterIniciaisClientes($nome) {
                         <input type="hidden" name="cadastrar_cliente" value="1">
                         <div class="mb-3">
                             <label class="form-label">Nome Completo *</label>
-                            <input type="text" name="nome" class="form-control" placeholder="Nome completo" required>
+                            <input type="text" name="nome" class="form-control" placeholder="Nome completo" pattern="[a-záàâãéèêíïóôõöúçñA-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\\s]+" title="O nome deve conter apenas letras e espaços" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Telefone *</label>
@@ -173,7 +202,8 @@ function obterIniciaisClientes($nome) {
                                             <td class="text-muted"><?= htmlspecialchars($cli['telefone']) ?></td>
                                             <td class="text-muted"><?= htmlspecialchars($cli['email'] ? $cli['email'] : 'Não informado') ?></td>
                                             <td class="text-center">
-                                                <button class="btn btn-sm text-muted p-0" title="Opções"><i class="bi bi-three-dots-vertical"></i></button>
+                                                <a href="editar_cliente.php?id=<?= $cli['id'] ?>" class="btn btn-sm btn-outline-warning rounded-pill me-2" title="Editar"><i class="bi bi-pencil-fill"></i></a>
+                                                <a href="excluir_cliente.php?id=<?= $cli['id'] ?>" class="btn btn-sm btn-outline-danger rounded-pill" title="Excluir" onclick="return confirm('Deseja realmente excluir esta cliente?');"><i class="bi bi-trash-fill"></i></a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

@@ -1,5 +1,11 @@
 <?php
 require_once 'conexao.php';
+session_start();
+
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: login.php");
+    exit();
+}
 
 $mensagem = "";
 $agenda = null;
@@ -8,7 +14,7 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     $id = intval($_GET['id']);
     
     try {
-        $sql = "SELECT id, nome_cliente, telefone, servico, profissional as profissional, data_hora 
+        $sql = "SELECT id, nome_cliente, telefone, servico, profissional as profissional, data_hora, observacoes 
             FROM agendamentos WHERE id = :id";
         $stmt = $conexao->prepare($sql);
         $stmt->bindValue(':id', $id);
@@ -29,14 +35,25 @@ if (isset($_GET['id']) && !empty($_GET['id'])) {
     header("Location: index.php");
     exit();
 }
-// Dados dos serviços com valores e durações
-$servicos_dados = [
-    'Corte e Escova' => ['valor' => 120, 'duracao' => '1h 30min'],
-    'Unha em Gel' => ['valor' => 150, 'duracao' => '2h'],
-    'Design de Sobrancelha' => ['valor' => 80, 'duracao' => '45min'],
-    'Mechas / Luzes' => ['valor' => 250, 'duracao' => '3h'],
-    'Progressiva' => ['valor' => 300, 'duracao' => '4h']
-];
+
+// Carrega os serviços cadastrados no banco para o select de edição
+try {
+    $stmt_servicos = $conexao->query("SELECT nome, preco, duracao FROM servicos ORDER BY nome ASC");
+    $servicos = [];
+    $servicos_dados = [];
+    while ($row = $stmt_servicos->fetch(PDO::FETCH_ASSOC)) {
+        $servicos[] = $row['nome'];
+        $servicos_dados[$row['nome']] = [
+            'valor' => number_format($row['preco'], 2, ',', '.'),
+            'duracao' => $row['duracao'] . ' min'
+        ];
+    }
+} catch (PDOException $erro) {
+    $servicos = [];
+    $servicos_dados = [];
+}
+
+$observacoes = $agenda['observacoes'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = intval($_POST['id']);
@@ -44,28 +61,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $profissional = trim($_POST['profissional']);
     $data_reserva = trim($_POST['data_reserva']);
     $hora_reserva = trim($_POST['hora_reserva']);
+    $observacoes = trim($_POST['observacoes'] ?? '');
     
     $data_hora_completa = $data_reserva . ' ' . $hora_reserva . ':00';
+    $timestamp_agendamento = strtotime($data_hora_completa);
+    $horario_agendamento = $timestamp_agendamento !== false ? date('H:i', $timestamp_agendamento) : null;
+    $horario_dentro_do_exp = $horario_agendamento !== null && $horario_agendamento >= '07:00' && $horario_agendamento <= '18:00';
 
     if (!empty($servico) && !empty($profissional) && !empty($data_reserva) && !empty($hora_reserva)) {
-        try {
+        if (!$horario_dentro_do_exp) {
+            $mensagem = "<div class='alert alert-warning'>O horário deve ser entre 07:00 e 18:00.</div>";
+        } else {
+            try {
                 $sql = "UPDATE agendamentos 
-                    SET servico = :servico, profissional = :profissional, data_hora = :data_hora 
+                    SET servico = :servico, profissional = :profissional, data_hora = :data_hora, observacoes = :observacoes 
                     WHERE id = :id";
             
-            $stmt = $conexao->prepare($sql);
-            $stmt->bindValue(':servico', $servico);
-            $stmt->bindValue(':profissional', $profissional);
-            $stmt->bindValue(':data_hora', $data_hora_completa);
-            $stmt->bindValue(':id', $id);
+                $stmt = $conexao->prepare($sql);
+                $stmt->bindValue(':servico', $servico);
+                $stmt->bindValue(':profissional', $profissional);
+                $stmt->bindValue(':data_hora', $data_hora_completa);
+                $stmt->bindValue(':observacoes', $observacoes);
+                $stmt->bindValue(':id', $id);
             
-            if ($stmt->execute()) {
-                //volta pro painel principal
-                header("Location: index.php");
-                exit();
+                if ($stmt->execute()) {
+                    header("Location: index.php");
+                    exit();
+                }
+            } catch (PDOException $erro) {
+                $mensagem = "<div class='alert alert-danger'>Erro ao atualizar: " . $erro->getMessage() . "</div>";
             }
-        } catch (PDOException $erro) {
-            $mensagem = "<div class='alert alert-danger'>Erro ao atualizar: " . $erro->getMessage() . "</div>";
         }
     } else {
         $mensagem = "<div class='alert alert-warning'>Preencha todos os campos obrigatórios.</div>";
@@ -345,13 +370,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="col-md-6">
                         <label for="servico" class="form-label-lumiere">Serviço</label>
                         <select class="form-select form-control-lumiere" id="servico" name="servico" required>
-                            <option value="Corte e Escova" <?= $agenda['servico'] == 'Corte e Escova' ? 'selected' : '' ?>>Corte e Escova</option>
-                            <option value="Unha em Gel" <?= $agenda['servico'] == 'Unha em Gel' ? 'selected' : '' ?>>Unha em Gel</option>
-                            <option value="Design de Sobrancelha" <?= $agenda['servico'] == 'Design de Sobrancelha' ? 'selected' : '' ?>>Design de Sobrancelha</option>
-                            <option value="Mechas / Luzes" <?= $agenda['servico'] == 'Mechas / Luzes' ? 'selected' : '' ?>>Mechas / Luzes</option>
-                            <option value="Progressiva" <?= $agenda['servico'] == 'Progressiva' ? 'selected' : '' ?>>Progressiva</option>
-                            <?php if(!in_array($agenda['servico'], ['Corte e Escova','Unha em Gel','Design de Sobrancelha','Mechas / Luzes','Progressiva'])): ?>
-                                <option value="<?= htmlspecialchars($agenda['servico']) ?>" selected><?= htmlspecialchars($agenda['servico']) ?></option>
+                            <?php if (count($servicos) > 0): ?>
+                                <?php foreach ($servicos as $servico_option): ?>
+                                    <option value="<?= htmlspecialchars($servico_option) ?>" <?= $agenda['servico'] === $servico_option ? 'selected' : '' ?>><?= htmlspecialchars($servico_option) ?></option>
+                                <?php endforeach; ?>
+                                <?php if (!in_array($agenda['servico'], $servicos, true)): ?>
+                                    <option value="<?= htmlspecialchars($agenda['servico']) ?>" selected><?= htmlspecialchars($agenda['servico']) ?></option>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <option value="Corte e Escova" <?= $agenda['servico'] == 'Corte e Escova' ? 'selected' : '' ?>>Corte e Escova</option>
+                                <option value="Unha em Gel" <?= $agenda['servico'] == 'Unha em Gel' ? 'selected' : '' ?>>Unha em Gel</option>
+                                <option value="Design de Sobrancelha" <?= $agenda['servico'] == 'Design de Sobrancelha' ? 'selected' : '' ?>>Design de Sobrancelha</option>
+                                <option value="Mechas / Luzes" <?= $agenda['servico'] == 'Mechas / Luzes' ? 'selected' : '' ?>>Mechas / Luzes</option>
+                                <option value="Progressiva" <?= $agenda['servico'] == 'Progressiva' ? 'selected' : '' ?>>Progressiva</option>
+                                <?php if(!in_array($agenda['servico'], ['Corte e Escova','Unha em Gel','Design de Sobrancelha','Mechas / Luzes','Progressiva'])): ?>
+                                    <option value="<?= htmlspecialchars($agenda['servico']) ?>" selected><?= htmlspecialchars($agenda['servico']) ?></option>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </select>
                     </div>
@@ -359,9 +393,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="col-md-6">
                         <label for="profissional" class="form-label-lumiere">Profissional</label>
                         <select class="form-select form-control-lumiere" id="profissional" name="profissional" required>
-                            <option value="Gabi Cabeleireira" <?= $agenda['profissional'] == 'Gabi Cabeleireira' ? 'selected' : '' ?>>Gabi Cabeleireira (Sênior)</option>
-                            <option value="Ana Nails" <?= $agenda['profissional'] == 'Ana Nails' ? 'selected' : '' ?>>Ana Nails</option>
-                            <option value="Carla Estética" <?= $agenda['profissional'] == 'Carla Estética' ? 'selected' : '' ?>>Carla Estética</option>
+                            <option value="Alice Silva" <?= $agenda['profissional'] == 'Alice Silva' ? 'selected' : '' ?>>Alice Silva</option>
+                            <option value="Mariana Costa" <?= $agenda['profissional'] == 'Mariana Costa' ? 'selected' : '' ?>>Mariana Costa</option>
+                            <option value="Bianca Ramos" <?= $agenda['profissional'] == 'Bianca Ramos' ? 'selected' : '' ?>>Bianca Ramos</option>
+                            <option value="Camila Castro" <?= $agenda['profissional'] == 'Camila Castro' ? 'selected' : '' ?>>Camila Castro</option>
+                            <option value="Fernanda Lima" <?= $agenda['profissional'] == 'Fernanda Lima' ? 'selected' : '' ?>>Fernanda Lima</option>
+                            <option value="Juliana Souza" <?= $agenda['profissional'] == 'Juliana Souza' ? 'selected' : '' ?>>Juliana Souza</option>
+                            <option value="Renata Almeida" <?= $agenda['profissional'] == 'Renata Almeida' ? 'selected' : '' ?>>Renata Almeida</option>
+                            <option value="Patrícia Mendes" <?= $agenda['profissional'] == 'Patrícia Mendes' ? 'selected' : '' ?>>Patrícia Mendes</option>
                         </select>
                     </div>
                 </div>
@@ -373,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="col-md-6">
                         <label for="hora_reserva" class="form-label-lumiere">Horário</label>
-                        <input type="time" class="form-control form-control-lumiere" id="hora_reserva" name="hora_reserva" value="<?= $hora_current ?? $hora_atual ?>" required>
+                        <input type="time" class="form-control form-control-lumiere" id="hora_reserva" name="hora_reserva" value="<?= $hora_current ?? $hora_atual ?>" min="07:00" max="18:00" required>
                     </div>
                 </div>
 
@@ -381,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card card-lumiere-edit">
                 <label for="observacoes" class="form-label-lumiere mb-2">Observações Especiais</label>
-                <textarea class="form-control form-control-lumiere textarea-lumiere" id="observacoes" placeholder="Cliente prefere produtos sem parabenos. Verificar disponibilidade da tonalidade da linha Wella."></textarea>
+                <textarea name="observacoes" class="form-control form-control-lumiere textarea-lumiere" id="observacoes" placeholder="Cliente prefere produtos sem parabenos. Verificar disponibilidade da tonalidade da linha Wella."><?= htmlspecialchars($observacoes) ?></textarea>
             </div>
 
             <div class="value-duration-box">
@@ -409,16 +448,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         function atualizarValorDuracao() {
             const servico = document.getElementById('servico').value;
-            
+            const valorElemento = document.querySelector('.value-area h2');
+            const duracaoElemento = document.querySelector('.duration-area span.fw-normal');
+
             if (servicosDados[servico]) {
                 const dados = servicosDados[servico];
-                document.querySelector('.value-area h2').textContent = 'R$ ' + dados.valor;
-                document.querySelector('.duration-area span.fw-normal').textContent = dados.duracao;
+                valorElemento.textContent = 'R$ ' + dados.valor;
+                duracaoElemento.textContent = dados.duracao;
+            } else {
+                valorElemento.textContent = 'R$ 0,00';
+                duracaoElemento.textContent = '---';
             }
         }
 
         document.getElementById('servico').addEventListener('change', atualizarValorDuracao);
-
         window.addEventListener('load', atualizarValorDuracao);
     </script>
 

@@ -20,7 +20,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data_hora = str_replace('T', ' ', $data_hora);
     }
 
-    if (!empty($nome) && !empty($telefone) && !empty($servico) && !empty($profissional) && !empty($data_hora)) {
+    $telefone_digits = preg_replace('/\D/', '', $telefone);
+    $timestamp_agendamento = strtotime($data_hora);
+    $agendamento_valido = $timestamp_agendamento !== false && $timestamp_agendamento >= time();
+    $horario_agendamento = $timestamp_agendamento !== false ? date('H:i', $timestamp_agendamento) : null;
+    $horario_dentro_do_exp = $horario_agendamento !== null && $horario_agendamento >= '07:00' && $horario_agendamento <= '18:00';
+    $nome_valido = preg_match('/^[a-záàâãéèêíïóôõöúçñA-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]+$/', $nome) && !empty(trim($nome));
+
+    if (empty($nome) || empty($telefone) || empty($servico) || empty($profissional) || empty($data_hora)) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark text-center small'>Por favor, preencha todos os campos obrigatórios.</div>";
+    } elseif (!$nome_valido) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark text-center small'>O nome da cliente deve conter apenas letras e espaços.</div>";
+    } elseif (strlen($telefone_digits) < 10 || strlen($telefone_digits) > 11) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark text-center small'>O telefone deve conter 10 ou 11 dígitos.</div>";
+    } elseif (!$agendamento_valido) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark text-center small'>A data e hora devem ser futuras.</div>";
+    } elseif (!$horario_dentro_do_exp) {
+        $mensagem = "<div class='alert alert-light border border-secondary text-dark text-center small'>O horário deve ser entre 07:00 e 18:00.</div>";
+    } else {
         try {
             $sql = "INSERT INTO agendamentos (nome_cliente, telefone, servico, profissional, data_hora) 
                     VALUES (:nome, :telefone, :servico, :profissional, :data_hora)";
@@ -35,16 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: index.php");
             exit();
         } catch (PDOException $e) {
-            $mensagem = "Erro ao agendar: " . $e->getMessage();
+            $mensagem = "<div class='alert alert-danger text-center small'>Erro ao agendar: " . $e->getMessage() . "</div>";
         }
-    } else {
-        $mensagem = "Por favor, preencha todos os campos obrigatórios.";
     }
 }
 
 // Carregar Serviços cadastrados no Banco de dados para o Select
 try {
-    $stmt_s = $conexao->query("SELECT nome_servico AS nome, preco FROM servicos ORDER BY nome ASC");
+    $stmt_s = $conexao->query("SELECT nome, preco FROM servicos ORDER BY nome ASC");
     $servicos_select = $stmt_s->fetchAll();
 } catch (PDOException $e) {
     $servicos_select = [];
@@ -119,7 +134,7 @@ try {
                 <div class="row g-3">
                     <div class="col-md-7">
                         <label class="form-label">Nome da Cliente</label>
-                        <input type="text" name="nome_cliente" class="form-control" placeholder="Digite o nome completo" required>
+                        <input type="text" name="nome_cliente" class="form-control" placeholder="Digite o nome completo" pattern="[a-záàâãéèêíïóôõöúçñA-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\\s]+" title="O nome deve conter apenas letras e espaços" required>
                     </div>
                     <div class="col-md-5">
                         <label class="form-label">Telefone</label>
@@ -145,11 +160,17 @@ try {
                             <option value="" disabled selected>Selecione o profissional</option>
                             <option value="Alice Silva">Alice Silva</option>
                             <option value="Mariana Costa">Mariana Costa</option>
+                            <option value="Bianca Ramos">Bianca Ramos</option>
+                            <option value="Camila Castro">Camila Castro</option>
+                            <option value="Fernanda Lima">Fernanda Lima</option>
+                            <option value="Juliana Souza">Juliana Souza</option>
+                            <option value="Renata Almeida">Renata Almeida</option>
+                            <option value="Patrícia Mendes">Patrícia Mendes</option>
                         </select>
                     </div>
                     <div class="col-md-12">
                         <label class="form-label">Data e Horário</label>
-                        <input type="datetime-local" name="data_hora" class="form-control" required>
+                        <input type="datetime-local" name="data_hora" class="form-control" min="<?= date('Y-m-d\TH:i') ?>" required>
                     </div>
                 </div>
                 <button type="submit" class="btn-submit">Confirmar Agendamento</button>

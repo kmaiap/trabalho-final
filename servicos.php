@@ -21,22 +21,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cadastrar_servico'])) 
     
     $duracao = intval($_POST['duracao']);
 
-    if (!empty($nome) && !empty($preco) && $duracao > 0) {
+    if (empty($nome) || empty($preco) || $duracao <= 0) {
+        $mensagem = "<div class='alert alert-warning p-2 small text-center'>Por favor, preencha todos os campos corretamente.</div>";
+    } elseif (!is_numeric($preco) || floatval($preco) <= 0) {
+        $mensagem = "<div class='alert alert-warning p-2 small text-center'>Informe um preço válido para o serviço.</div>";
+    } elseif (floatval($preco) > 10000) {
+        $mensagem = "<div class='alert alert-warning p-2 small text-center'>O preço do serviço não pode exceder R$ 10.000,00.</div>";
+    } else {
         try {
             // Insere no banco de dados
             $sql = "INSERT INTO servicos (nome, preco, duracao) VALUES (:nome, :preco, :duracao)";
             $stmt = $conexao->prepare($sql);
             $stmt->execute([
                 ':nome'    => $nome, 
-                ':preco'   => $preco, 
+                ':preco'   => number_format((float)$preco, 2, '.', ''), 
                 ':duracao' => $duracao
             ]);
             $mensagem = "<div class='alert alert-success p-2 small text-center'>Serviço cadastrado com sucesso!</div>";
         } catch (PDOException $e) {
             $mensagem = "<div class='alert alert-danger p-2 small text-center'>Erro ao cadastrar: " . $e->getMessage() . "</div>";
         }
-    } else {
-        $mensagem = "<div class='alert alert-warning p-2 small text-center'>Por favor, preencha todos os campos corretamente.</div>";
     }
 }
 
@@ -148,7 +152,7 @@ try {
                                     <th>Nome do Procedimento</th>
                                     <th>Preço Base</th>
                                     <th>Tempo Estimado</th>
-                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -159,7 +163,8 @@ try {
                                             <td class="text-dark fw-bold">R$ <?= number_format($serv['preco'], 2, ',', '.') ?></td>
                                             <td class="text-muted"><i class="bi bi-clock me-1"></i> <?= htmlspecialchars($serv['duracao']) ?> min</td>
                                             <td class="text-center">
-                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1" style="font-size: 0.75rem;">Ativo</span>
+                                                <a href="editar_servico.php?id=<?= $serv['id'] ?>" class="btn btn-sm btn-outline-warning rounded-pill me-2" title="Editar"><i class="bi bi-pencil-fill"></i></a>
+                                                <a href="excluir_servico.php?id=<?= $serv['id'] ?>" class="btn btn-sm btn-outline-danger rounded-pill" title="Excluir" onclick="return confirm('Deseja realmente excluir este serviço?');"><i class="bi bi-trash-fill"></i></a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

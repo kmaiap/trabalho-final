@@ -50,6 +50,11 @@ $agendamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .badge-servico { background: #FAF9F6; border: 1px solid #EAE5DF; color: var(--neutral); padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
         .btn-novo { background: var(--primary); color: white; padding: 12px 24px; border-radius: 50px; font-weight: 600; text-decoration: none; letter-spacing: 0.5px; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
         .btn-novo:hover { background: #BFA030; color: white; }
+        .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 14px; font-size: 0.85rem; font-weight: 600; text-decoration: none; transition: 0.2s; }
+        .btn-action-edit { color: var(--neutral); background: #F0E3B8; border: 1px solid #E3D29B; }
+        .btn-action-edit:hover { background: #F7E9C3; color: var(--neutral); }
+        .btn-action-delete { color: white; background: #7A5A3C; border: 1px solid #7A5A3C; }
+        .btn-action-delete:hover { background: #66492F; color: white; }
     </style>
 </head>
 <body>
@@ -88,6 +93,7 @@ $agendamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th>Serviço</th>
                         <th>Profissional</th>
                         <th>Data / Horário</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -104,13 +110,23 @@ $agendamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <span><?= !empty($row['data_hora']) ? date('d/m/Y - H:i', strtotime($row['data_hora'])) : '' ?></span>
                                     </div>
                                 </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="editar.php?id=<?= $row['id'] ?>" class="btn-action btn-action-edit">
+                                            <i class="bi bi-pencil-fill"></i> Editar
+                                        </a>
+                                        <a href="excluir.php?id=<?= $row['id'] ?>" class="btn-action btn-action-delete" onclick="return confirm('Deseja excluir este agendamento?');">
+                                            <i class="bi bi-trash-fill"></i> Excluir
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-5">
+                            <td colspan="6" class="text-center text-muted py-5">
                                 <i class="bi bi-calendar-x d-block fs-3 mb-2 opacity-50"></i>
-                                Nenhhum agendamento encontrado para os próximos dias.
+                                Nenhum agendamento encontrado para os próximos dias.
                             </td>
                         </tr>
                     <?php endif; ?>
