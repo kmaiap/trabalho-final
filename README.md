@@ -1,18 +1,18 @@
 # ⚜️ Lumiére - Sistema de Gestão Interna para Salão de Beleza
 
-O **Lumiére** é uma plataforma web elegante e de alta performance desenvolvida para centralizar a gestão de salões de beleza e clínicas de estética. O sistema combina uma identidade visual *premium* com regras de negócio sólidas, permitindo o controle de agendamentos, fluxo de caixa diário, além do gerenciamento completo de clientes e serviços ofertados.
+O **Lumiére** é uma plataforma de gestão interna desenvolvida para o gerenciamento do salão Lumiére! O sistema combina uma identidade visual sofisticada, permitindo o controle de agendamentos, gerenciamento completo de clientes e serviços ofertados.
 
 ---
 
-## 🚀 Funcionalidades Principais
+## Funcionalidades Principais
 
 | Módulo | Descrição | Recursos Inclusos |
 | :--- | :--- | :--- |
-| **🔐 Autenticação** | Controle de acesso seguro | Criptografia de senhas com `password_hash`, validação de sessão ativa e proteção de páginas restritas. |
-| **📊 Dashboard** | Painel analítico em tempo real | Indicadores de faturamento diário, taxa de ocupação do salão, listagem cronológica de horários e avatares dinâmicos. |
-| **📅 Agendamentos** | Controle de horários e profissionais | Sistema para agendar e desmarcar procedimentos de forma limpa, evitando choque de horários. |
-| **✂️ Serviços** | Catálogo de procedimentos | Cadastro simplificado de serviços com tratamento automático de valores monetários e tempos estimados. |
-| **👥 Clientes** | Portfólio e banco de contatos | Cadastro de clientes com histórico básico, centralização de contatos (Telefone/E-mail) e iniciais automatizadas. |
+| ** Autenticação** | Controle de acesso seguro | Criptografia de senhas com `password_hash`, validação de sessão ativa e proteção de páginas restritas. |
+| ** Dashboard** | Painel analítico em tempo real | Indicadores de faturamento diário, taxa de ocupação do salão, listagem cronológica de horários e avatares dinâmicos. |
+| ** Agendamentos** | Controle de horários e profissionais | Sistema para agendar e desmarcar procedimentos de forma limpa, evitando choque de horários. |
+| ** Serviços** | Catálogo de procedimentos | Cadastro simplificado de serviços com tratamento automático de valores monetários e tempos estimados. |
+| ** Clientes** | Portfólio e banco de contatos | Cadastro de clientes com histórico básico, centralização de contatos (Telefone/E-mail) e iniciais automatizadas. |
 
 ---
 
